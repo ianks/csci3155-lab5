@@ -1,0 +1,15 @@
+[0m[[0minfo[0m] [0m[32mLab5Spec:[0m[0m
+[0m[[0minfo[0m] [0m[32mmapFirstDoWith[0m[0m
+[0m[[0minfo[0m] [0m[31m- should map the first element where f returns Some *** FAILED ***[0m[0m
+[0m[[0minfo[0m] [0m[31m  java.lang.UnsupportedOperationException:[0m[0m
+[0m[[0minfo[0m] [0m[31m  at Lab5$.mapFirstWith(Lab5.scala:41)[0m[0m
+[0m[[0minfo[0m] [0m[31m  at Lab5Spec$$anonfun$1.dowith$1(Lab5Spec.scala:10)[0m[0m
+[0m[[0minfo[0m] [0m[31m  at Lab5Spec$$anonfun$1.apply$mcV$sp(Lab5Spec.scala:11)[0m[0m
+[0m[[0minfo[0m] [0m[31m  at Lab5Spec$$anonfun$1.apply(Lab5Spec.scala:7)[0m[0m
+[0m[[0minfo[0m] [0m[31m  at Lab5Spec$$anonfun$1.apply(Lab5Spec.scala:7)[0m[0m
+[0m[[0minfo[0m] [0m[31m  at org.scalatest.Transformer$$anonfun$apply$1.apply(Transformer.scala:22)[0m[0m
+[0m[[0minfo[0m] [0m[31m  at org.scalatest.Transformer$$anonfun$apply$1.apply(Transformer.scala:22)[0m[0m
+[0m[[0minfo[0m] [0m[31m  at org.scalatest.OutcomeOf$class.outcomeOf(OutcomeOf.scala:85)[0m[0m
+[0m[[0minfo[0m] [0m[31m  at org.scalatest.OutcomeOf$.outcomeOf(OutcomeOf.scala:104)[0m[0m
+[0m[[0minfo[0m] [0m[31m  at org.scalatest.Transformer.apply(Transformer.scala:22)[0m[0m
+[0m[[0minfo[0m] [0m[31m  ...[0m[0m
