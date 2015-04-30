@@ -7,31 +7,31 @@ import scala.collection.immutable.HashMap
  */
 object ast {
   sealed abstract class Expr extends Positional
-  
+
   /* Variables */
   case class Var(x: String) extends Expr
-  
+
   /* Declarations */
   case class Decl(mut: Mutability, x: String, e1: Expr, e2: Expr) extends Expr
   case class InterfaceDecl(tvar: String, tobj: Typ, e: Expr) extends Expr
-  
+
   /* Literals and Values*/
   case class N(n: Double) extends Expr
   case class B(b: Boolean) extends Expr
   case object Undefined extends Expr
   case class S(s: String) extends Expr
-  
+
   /* Unary and Binary Operators */
   case class Unary(uop: Uop, e1: Expr) extends Expr
   case class Binary(bop: Bop, e1: Expr, e2: Expr) extends Expr
 
   sealed abstract class Uop
-  
+
   case object Neg extends Uop /* -e1 */
   case object Not extends Uop /* !e1 */
 
   sealed abstract class Bop
-  
+
   case object Plus extends Bop /* e1 + e2 */
   case object Minus extends Bop /* e1 - e2 */
   case object Times extends Bop /* e1 * e2 */
@@ -42,47 +42,47 @@ object ast {
   case object Le extends Bop /* e1 <= e2 */
   case object Gt extends Bop /* e1 > e2 */
   case object Ge extends Bop /* e1 >= e2 */
-  
+
   case object And extends Bop /* e1 && e2 */
   case object Or extends Bop /* e1 || e2 */
-  
+
   case object Seq extends Bop /* , */
-  
+
   /* Intraprocedural Control */
   case class If(e1: Expr, e2: Expr, e3: Expr) extends Expr
-  
+
   /* Functions */
   type Params = Either[ List[(String,Typ)], (PMode,String,Typ) ]
   case class Function(p: Option[String], paramse: Params, tann: Option[Typ], e1: Expr) extends Expr
   case class Call(e1: Expr, args: List[Expr]) extends Expr
-  
+
   /* I/O */
-  case class Print(e1: Expr) extends Expr 
-  
+  case class Print(e1: Expr) extends Expr
+
   /* Objects */
   case class Obj(fields: Map[String, Expr]) extends Expr
   case class GetField(e1: Expr, f: String) extends Expr
-  
+
   /* Addresses and Mutation */
   case class Assign(e1: Expr, e2: Expr) extends Expr
   case object Null extends Expr
   case class A private[ast] (addr: Int) extends Expr
 
   case object Deref extends Uop /* *e1 */
-  
+
   sealed abstract class Mutability
   case object MConst extends Mutability
   case object MVar extends Mutability
-  
+
   /* Parameter Passing */
   sealed abstract class PMode
   case object PName extends PMode
   case object PVar extends PMode
   case object PRef extends PMode
-  
+
   /* Casting */
   case class Cast(t: Typ) extends Uop
-  
+
   /* Types */
   sealed abstract class Typ
   case object TNumber extends Typ
@@ -106,11 +106,11 @@ object ast {
   case class TObj(tfields: Map[String, Typ]) extends Typ
   case class TVar(tvar: String) extends Typ
   case class TInterface(tvar: String, t: Typ) extends Typ
-  
+
   /*
    * DoWith is a data structure that holds a function that returns a result of
    * type R with a input-output state of type W.
-   * 
+   *
    * Aside: This is also known as the State monad.
    */
   sealed class DoWith[W,R](doer: W => (W,R)) {
@@ -122,7 +122,7 @@ object ast {
         (wp, f(r))
       }
     })
-    
+
     def flatMap[B](f: R => DoWith[W,B]): DoWith[W,B] = new DoWith[W,B]({
       (w: W) => {
         val (wp, r) = doer(w)
@@ -130,25 +130,25 @@ object ast {
       }
     })
   }
-  
+
   def doget[W]: DoWith[W,W] = new DoWith[W,W]({ w => (w, w) })
   def doreturn[W,R](r: R): DoWith[W,R] = doget map { _ => r }
   def domodify[W](f: W => W): DoWith[W,Unit] = doget flatMap {
     w => new DoWith[W,Unit]({ _ => (f(w), ()) })
   }
-  
+
   /* Memory */
   class Mem private (map: Map[A, Expr], nextAddr: Int) {
     def apply(key: A): Expr = map(key)
     def get(key: A): Option[Expr] = map.get(key)
     def +(kv: (A, Expr)): Mem = new Mem(map + kv, nextAddr)
     def contains(key: A): Boolean = map.contains(key)
-    
+
     private def alloc(v: Expr): (Mem, A) = {
       val fresha = A(nextAddr)
       (new Mem(map + (fresha -> v), nextAddr + 1), fresha)
     }
-    
+
     override def toString: String = map.toString
   }
   object Mem {
@@ -162,31 +162,31 @@ object ast {
       a
     }
   }
-  
+
   /* Define values. */
   def isValue(e: Expr): Boolean = e match {
     case N(_) | B(_) | Undefined | S(_) | Function(_, _, _, _) | A(_) | Null => true
     case _ => false
   }
-  
+
   def isLExpr(e: Expr): Boolean = e match {
     case Var(_) | GetField(_, _) => true
     case _ => false
   }
-  
+
   def isLValue(e: Expr): Boolean = e match {
     case Unary(Deref, A(_)) | GetField(A(_), _) => true
     case _ => false
   }
-  
+
   def isBaseType(t: Typ): Boolean = t match {
     case TNumber | TBool | TString | TUndefined | TNull => true
     case _ => false
   }
-  
+
   /*
    * Pretty-print values.
-   * 
+   *
    * We do not override the toString method so that the abstract syntax can be printed
    * as is.
    */
@@ -212,7 +212,7 @@ object ast {
     }
   }
   def prettyExpr(v: Expr): String = pretty(v)
-  
+
   def pretty(m: Mem, v: Expr): String = {
     (v: @unchecked) match {
       case a @ A(_) if m contains a => pretty(m, m(a))
@@ -228,15 +228,15 @@ object ast {
       case _ => pretty(v)
     }
   }
-  
+
   def pretty(m: Mutability): String = m match {
     case MConst => "const"
     case MVar => "var"
   }
-  
+
   /*
    * Pretty-print types.
-   * 
+   *
    * We do not override the toString method so that the abstract syntax can be printed
    * as is.
    */
@@ -264,13 +264,13 @@ object ast {
     case TVar(tvar) => tvar
     case TInterface(tvar, t1) => "Interface %s %s".format(tvar, pretty(t1))
   }
-  
+
   def pretty(m: PMode): String = m match {
     case PName => "name"
     case PVar => "var"
     case PRef => "ref"
   }
-  
+
   /* Get the free variables of e. */
   def freeVarsVar(e: Expr): Set[Var] = e match {
     case vr @ Var(x) => Set(vr)
@@ -294,13 +294,13 @@ object ast {
     case InterfaceDecl(_, _, e1) => freeVarsVar(e1)
   }
   def freeVars(e: Expr): Set[String] = freeVarsVar(e) map { case Var(x) => x }
-  
+
   /* Check closed expressions. */
   class UnboundVariableError(x: Var) extends Exception {
     override def toString =
       Parser.formatErrorMessage(x.pos, "UnboundVariableError", "unbound variable %s".format(x.x))
   }
-  
+
   def closed(e: Expr): Boolean = freeVarsVar(e).isEmpty
   def checkClosed(e: Expr): Unit = {
     freeVarsVar(e).headOption.foreach { x => throw new UnboundVariableError(x) }
@@ -328,12 +328,12 @@ object ast {
     }
     loop(env)(e)
   }
-  
+
   def transformVisitorSimple(visitant: (Expr => Expr) => PartialFunction[Expr, Expr])(e: Expr): Expr = {
     def myvisitant(tr: Unit => Expr => Expr): Unit => PartialFunction[Expr,Expr] = { _ => visitant(tr()) }
     transformVisitor[Unit](myvisitant)()(e)
   }
-  
+
   def transformTypVisitor[Env](visitant: (Env => Typ => Typ) => Env => PartialFunction[Typ, Typ])(env: Env)(t: Typ): Typ = {
     def loop(env: Env)(t: Typ): Typ = {
       val tr: Typ => Typ = loop(env)
@@ -352,12 +352,12 @@ object ast {
     }
     loop(env)(t)
   }
-  
+
   def transformTypVisitorSimple(visitant: (Typ => Typ) => PartialFunction[Typ, Typ])(t: Typ): Typ = {
     def myvisitant(tr: Unit => Typ => Typ): Unit => PartialFunction[Typ,Typ] = { _ => visitant(tr()) }
     transformTypVisitor[Unit](myvisitant)()(t)
   }
-  
+
   /* Substitute in type t replacing uses of type variable tvar with type tp */
   def typSubstitute(t: Typ, tp: Typ, tvar: String): Typ = {
     def subst(tr: Typ => Typ): PartialFunction[Typ,Typ] = {
@@ -368,7 +368,7 @@ object ast {
     }
     transformTypVisitorSimple(subst)(t)
   }
-  
+
   /* Substitute in an expression e all uses of type variable tvar with type tp */
   def typSubstituteExpr(tp: Typ, tvar: String, e: Expr): Expr = {
     def tysubst(t: Typ): Typ = typSubstitute(t, tp, tvar)
@@ -384,7 +384,7 @@ object ast {
     }
     transformVisitorSimple(subst)(e)
   }
-  
+
   /* Remove interface declarations. */
   def removeInterfaceDecl(e: Expr): Expr = {
     type Env = Map[String, Typ]
@@ -431,11 +431,11 @@ object ast {
     }
     loop(Map.empty, e)
   }
-  
+
   /* Rename bound variables in e to avoid capturing free variables in esub. */
   def avoidCapture(avoidVars: Set[String], e: Expr): Expr = {
     def renameVar(x: String): String = if (avoidVars contains x) renameVar(x + "$") else x
-    
+
     def rename(env: Map[String,String], e: Expr): Expr = {
       def ren(e: Expr): Expr = rename(env, e)
       e match {
@@ -472,59 +472,59 @@ object ast {
         case Obj(fields) => Obj(fields map { case (f,e) => (f, ren(e)) })
         case GetField(e1, f) => GetField(ren(e1), f)
         case Assign(e1, e2) => Assign(ren(e1), ren(e2))
-        
+
         /* Should not match: should have been removed. */
         case InterfaceDecl(_, _, _) => throw new IllegalArgumentException("Gremlins: Encountered unexpected expression %s.".format(e))
       }
     }
     rename(Map.empty, e)
   }
-  
-  
+
+
   /*
    * Dynamic Type Error exception.  Throw this exception to signal a dynamic
    * type error.
-   * 
+   *
    *   throw DynamicTypeError(e)
-   * 
+   *
    */
   case class DynamicTypeError(e: Expr) extends Exception {
     override def toString = Parser.formatErrorMessage(e.pos, "DynamicTypeError", "in evaluating " + e)
   }
-  
+
   /*
    * Null Dereference Error exception.  Throw this exception to signal a null
    * pointer dereference error.
-   * 
+   *
    *   throw NullDereferenceError(e)
-   * 
+   *
    */
   case class NullDereferenceError(e: Expr) extends Exception {
     override def toString = Parser.formatErrorMessage(e.pos, "NullDereferenceError", "in evaluating " + e)
   }
-  
+
   /*
    * Static Type Error exception.  Throw this exception to signal a static
    * type error.
-   * 
+   *
    *   throw StaticTypeError(tbad, esub, e)
-   * 
+   *
    */
   case class StaticTypeError(tbad: Typ, esub: Expr, e: Expr) extends Exception {
     override def toString =
       Parser.formatErrorMessage(esub.pos, "StaticTypeError", "invalid type %s for sub-expression %s in %s".format(pretty(tbad), esub, e))
   }
-  
+
   /*
    * Stuck Type Error exception.  Throw this exception to signal getting
    * stuck in evaluation.  This exception should not get raised if
    * evaluating a well-typed expression.
-   * 
+   *
    *   throw StuckError(e)
-   * 
+   *
    */
   case class StuckError(e: Expr) extends Exception {
     override def toString = Parser.formatErrorMessage(e.pos, "StuckError", "in evaluating " + e)
   }
-  
+
 }

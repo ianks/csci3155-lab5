@@ -165,7 +165,7 @@ object Lab5 extends jsy.util.JsyApplication {
         // number of arguments were passed.
         case TFunction(Left(params), tret) if (params.length == args.length) => {
           // Matches each param and each arg together in a tuple
-          (params, args).zipped.foreach {
+          (psarams, args).zipped.foreach {
             case ((_, tparami),ei) => check(ei){
               case ti if (ti == tparami) => ()
             }
