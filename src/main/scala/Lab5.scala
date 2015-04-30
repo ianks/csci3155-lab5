@@ -36,11 +36,17 @@ object Lab5 extends jsy.util.JsyApplication {
 
   /*** Helper: mapFirst to DoWith ***/
 
-  // Just like mapFirst from Lab 4 but uses a callback f that returns a DoWith in the Some case.
+  // Take a lambda function from the user and a list. It then calls the users's
+  // lamda, and if that return value is Some, it replaces the value with what
+  // was returned by the lamda which is a Option[DoWith[W,A]].
   def mapFirstWith[W,A](f: A => Option[DoWith[W,A]])(l: List[A]): DoWith[W,List[A]] = l match {
     case Nil => doreturn( Nil )
     case h :: t => f(h) match {
+      // Case when the lamda returns nothing meaningful. Keep recursing,
+      // yeilding the current h :: tp to the users's lambda
       case None => for (tp <- mapFirstWith(f)(t)) yield h :: tp
+      // Case something meaningful is found. We are done searching
+      // through the list, yeild hp :: t back to lamda
       case Some(withhp) => for (hp <- withhp) yield hp :: t
     }
   }
@@ -48,12 +54,18 @@ object Lab5 extends jsy.util.JsyApplication {
   /*** Casting ***/
 
   def castOk(t1: Typ, t2: Typ): Boolean = (t1, t2) match {
+    // Base cases
     case (TNull, TObj(_)) => true
     case (_, _) if (t1 == t2) => true
     case (TObj(fields1), TObj(fields2)) => {
+      // If all of the fields match, then it is OK to cast an Object to another Object. Otherwise it is not.
       (fields2 forall { case (f2, t2) => fields1.get(f2) match { case Some(t1) => t1 == t2 case None => false } }) ||
       (fields1 forall { case (f2, t2) => fields2.get(f2) match { case Some(t1) => t1 == t2 case None => false } })
     }
+
+    // Inductive cases
+    // If it is an interface, substitute the type with tvar (tvar must be
+    // string)
     case (TInterface(tvar, t1p), _) => castOk(typSubstitute(t1p, t1, tvar), t2)
     case (_, TInterface(tvar, t2p)) => castOk(t1, typSubstitute(t2p, t2, tvar))
     case _ => false
@@ -149,7 +161,10 @@ object Lab5 extends jsy.util.JsyApplication {
       }
 
       case Call(e1, args) => check(e1){
+        // Case that we are calling a function; we need to check that the correct
+        // number of arguments were passed.
         case TFunction(Left(params), tret) if (params.length == args.length) => {
+          // Matches each param and each arg together in a tuple
           (params, args).zipped.foreach {
             case ((_, tparami),ei) => check(ei){
               case ti if (ti == tparami) => ()
