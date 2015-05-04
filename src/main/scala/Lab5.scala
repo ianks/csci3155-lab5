@@ -74,7 +74,10 @@ object Lab5 extends jsy.util.JsyApplication {
   /*** Type Inference ***/
 
   def hasFunctionTyp(t: Typ): Boolean = t match {
+    // All functions have function type
     case TFunction(_, _) => true
+
+    // An object has a function typ if one of its fields is a function
     case TObj(fields) if (fields exists { case (_, t) => hasFunctionTyp(t) }) => true
     case _ => false
   }
@@ -165,30 +168,45 @@ object Lab5 extends jsy.util.JsyApplication {
         // number of arguments were passed.
         case TFunction(Left(params), tret) if (params.length == args.length) => {
           // Matches each param and each arg together in a tuple
-          (psarams, args).zipped.foreach {
-            case ((_, tparami),ei) => check(ei){
+          (params, args).zipped.foreach {
+            case ((_, tparami), ei) => check(ei){
               case ti if (ti == tparami) => ()
             }
           }
           tret
         }
+
+        // Expected one type, but got another. This can either be an error or
+        // that the args are unneccesary
         case tgot @ TFunction(Right((mode,_,tparam)), tret) => {
           args match {
+            // Alphabet soup
             case earg :: Nil => check(earg){
               case targ if (targ == tparam  && (mode != PRef || isLExpr(earg))) => ()
             }
             case _ => err(tgot, e1)
           }
+
           tret
         }
       }
 
+      // Case we are assigning a to a variable
       case Assign(Var(x), e1) =>
         val t1 = typ(e1)
+
+        // Check if x is in the env
         env.get(x) match {
+          // If so and the expressions are of same type, we return the type of
+          // type of e1
           case Some((MVar, t)) if (t1 == t) => t1
+
+          // Otherwise we have experienced an error
           case _ => err(t1, e1)
         }
+
+      // Assigning to an object, in this case we have to assign fields
+      // Similar logic to assigning to a variable
       case Assign(GetField(e1, f), e2) => check(e1){
         case TObj(fields) =>
           val t2 = typ(e2)
@@ -239,7 +257,10 @@ object Lab5 extends jsy.util.JsyApplication {
   /* Capture-avoiding substitution in e replacing variables x with esub. */
   def substitute(e: Expr, esub: Expr, x: String): Expr = {
     def subst(e: Expr): Expr = substitute(e, esub, x)
+
+    // Rename bound variables in e to avoid capturing free variables in esub
     val ep = avoidCapture(freeVars(esub), e)
+
     ep match {
       case N(_) | B(_) | Undefined | S(_) | Null | A(_) => ep
       case Print(e1) => Print(subst(e1))
@@ -249,6 +270,7 @@ object Lab5 extends jsy.util.JsyApplication {
       case Var(y) => if (x == y) esub else e
       case Decl(mut, y, e1, e2) => Decl(mut, y, subst(e1), if (x == y) e2 else subst(e2))
       case Function(p, paramse, retty, e1) =>
+        // Check if parameter exists, if so, use the expression
         if (
           p == Some(x) ||
           paramse.fold(
@@ -283,23 +305,29 @@ object Lab5 extends jsy.util.JsyApplication {
     /*** Body ***/
     e match {
       /* Base Cases: Do Rules */
-      case Print(v1) if isValue(v1) => for (m <- doget) yield { println(pretty(m, v1)); Undefined }
-      case Unary(Neg, N(n1)) => doreturn( N(- n1) )
-      case Unary(Not, B(b1)) => doreturn( B(! b1) )
-      case Binary(Seq, v1, e2) if isValue(v1) => doreturn( e2 )
-      case Binary(Plus, S(s1), S(s2)) => doreturn( S(s1 + s2) )
-      case Binary(Plus, N(n1), N(n2)) => doreturn( N(n1 + n2) )
+      case Print(v1) if isValue(v1)                                          => for (m <- doget) yield { println(pretty(m, v1)); Undefined }
+      case Unary(Neg, N(n1))                                                 => doreturn( N(- n1) )
+      case Unary(Not, B(b1))                                                 => doreturn( B(! b1) )
+      case Binary(Seq, v1, e2) if isValue(v1)                                => doreturn( e2 )
+      case Binary(Plus, S(s1), S(s2))                                        => doreturn( S(s1 + s2) )
+      case Binary(Plus, N(n1), N(n2))                                        => doreturn( N(n1 + n2) )
       case Binary(bop @ (Lt|Le|Gt|Ge), v1, v2) if isValue(v1) && isValue(v2) => doreturn( B(inequalityVal(bop, v1, v2)))
-      case Binary(Eq, v1, v2) if isValue(v1) && isValue(v2) => doreturn( B(v1 == v2) )
-      case Binary(Ne, v1, v2) if isValue(v1) && isValue(v2) => doreturn( B(v1 != v2) )
-      case Binary(And, B(b1), e2) => doreturn( if (b1) e2 else B(false) )
-      case Binary(Or, B(b1), e2) => doreturn( if (b1) B(true) else e2 )
-      case Binary(Minus, N(n1), N(n2)) => doreturn( N(n1 - n2) )
-      case Binary(Times, N(n1), N(n2)) => doreturn( N(n1 * n2) )
-      case Binary(Div, N(n1), N(n2)) => doreturn( N(n1 / n2) )
-      case If(B(b1), e2, e3) => doreturn( if (b1) e2 else e3 )
+      case Binary(Eq, v1, v2) if isValue(v1) && isValue(v2)                  => doreturn( B(v1 == v2) )
+      case Binary(Ne, v1, v2) if isValue(v1) && isValue(v2)                  => doreturn( B(v1 != v2) )
+      case Binary(And, B(b1), e2)                                            => doreturn( if (b1) e2 else B(false) )
+      case Binary(Or, B(b1), e2)                                             => doreturn( if (b1) B(true) else e2 )
+      case Binary(Minus, N(n1), N(n2))                                       => doreturn( N(n1 - n2) )
+      case Binary(Times, N(n1), N(n2))                                       => doreturn( N(n1 * n2) )
+      case Binary(Div, N(n1), N(n2))                                         => doreturn( N(n1 / n2) )
+      case If(B(b1), e2, e3)                                                 => doreturn( if (b1) e2 else e3 )
+
+      // Case: all fields contain values
       case Obj(fields) if (fields forall { case (_, vi) => isValue(vi)}) =>
+        // Loops thought all the memory allocated for the expression,
+        // yielding it back to the caller
         for (a <- Mem.alloc(e)) yield a
+
+      // Get the field for the object, yeild the value to caller
       case GetField(a @ A(_), f) => for (m <- doget) yield {
         val vopt = for {
           Obj(fields) <- m.get(a)
@@ -308,14 +336,22 @@ object Lab5 extends jsy.util.JsyApplication {
         vopt.getOrElse(throw StuckError(e))
       }
 
+      // If MConst has a value the substitute it
       case Decl(MConst, x, v1, e2) if isValue(v1) => doreturn( substitute(e2, v1, x) )
+
+      // If its a variable, loop through all memory allocated for value,
+      // then substitute the values
       case Decl(MVar, x, v1, e2) if isValue(v1) =>
         for (a <- Mem.alloc(v1)) yield
         substitute(e2, Unary(Deref, a), x)
       case Unary(Deref, a @ A(_)) => for (m <- doget) yield m(a)
+
+      // Assigning the unary, you modify the memory, add the keys
+      // and values to the memory map
       case Assign(Unary(Deref, a @ A(_)), v) if isValue(v) =>
         for (_ <- domodify { (m: Mem) => m + (a -> v) }) yield v
 
+      // Modify the object fields in memory
       case Assign(GetField(a @ A(_), f), v) if isValue(v) =>
         for {
           m <- doget[Mem]
@@ -323,22 +359,30 @@ object Lab5 extends jsy.util.JsyApplication {
             case Some(Obj(fields)) if (fields.contains(f)) => fields
             case _ => throw StuckError(e)
           }
+
+          //Physically modifies the memory map
           _ <- domodify { (m: Mem) => m + (a -> Obj(fields + (f -> v))) }
         } yield
         v
 
       case Call(v1, args) if isValue(v1) =>
+        // If there are parameters, substitute the expression
         def substfun(e1: Expr, p: Option[String]): Expr = p match {
           case None => e1
           case Some(x) => substitute(e1, v1, x)
         }
+
         (v1, args) match {
+          // If the value is a function, and all the args are values,
+          // we substitute vi for xi in all the params.
           case (Function(p, Left(params), _, e1), _) if (args forall isValue) => {
+            // Zip the params and args in a tuple
             val e1p = (params, args).zipped.foldRight(e1){
               case (((xi, _),vi), acc) => substitute(acc, vi, xi)
             }
             doreturn( substfun(e1p, p) )
           }
+
           case (Function(p, Right((mode,x,_)), _, e1), earg :: Nil) if argApplyable(mode, earg) => mode match {
             case PName | PRef => doreturn( substfun(substitute(e1, earg, x), p) )
             case PVar =>
@@ -382,11 +426,16 @@ object Lab5 extends jsy.util.JsyApplication {
         for (e1p <- step(e1)) yield Binary(bop, e1p, e2)
       case If(e1, e2, e3) =>
         for (e1p <- step(e1)) yield If(e1p, e2, e3)
+
+      // The case where the field is not a value
       case Obj(fields) => fields find { case (_, ei) => !isValue(ei) } match {
         case Some((fi,ei)) =>
+          // Step on ei to get it closer to a value
           for (eip <- step(ei)) yield Obj(fields + (fi -> eip))
         case None => throw StuckError(e)
       }
+
+      // It its a field, step on e1 and yeild the field
       case GetField(e1, f) =>
         for (e1p <- step(e1)) yield GetField(e1p, f)
 
