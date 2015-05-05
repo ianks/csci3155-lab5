@@ -1,0 +1,35 @@
+// Functions to test interpreter
+// ===============
+
+// Square
+console.log("Square: ");
+var square = function(num) { return num * num; };
+console.log(square(5));
+
+// Fib
+console.log("Fib: ");
+var fib = function(n) {
+  if (n < 2) return 1;
+
+  return fib(n - 2) + fib(n - 1);
+};
+console.log(fib(5));
+
+// Curry
+console.log("Curry: ");
+var curry = function() { return function() { return 42; }; }
+console.log(curry()());
+
+
+// Scoping
+// ===============
+console.log("Scope: ");
+
+x = 4;
+
+// In dynamic scope, x would have been bound to 4
+var double = function(y) {
+  return function(x) { return x * y; }(y);
+}
+
+console.log(double(3)); // => 9
